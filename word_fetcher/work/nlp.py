@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable, List, Sequence, Tuple
@@ -17,13 +16,6 @@ try:
     _LTP_AVAILABLE = True
 except Exception:  # pragma: no cover
     _LTP_AVAILABLE = False
-
-try:
-    import hanlp  # type: ignore
-
-    _HANLP_AVAILABLE = True
-except Exception:  # pragma: no cover
-    _HANLP_AVAILABLE = False
 
 # simple regex filters
 _RE_NUMERIC = re.compile(r"^[0-9]+([.,:/-][0-9]+)*$")
@@ -103,15 +95,13 @@ def reload_resources() -> None:
     _resources()
 
 
-# ---------- Analyzer selection (LTP -> HanLP -> Jieba) ----------
+# ---------- Analyzer selection (LTP -> Jieba fallback) ----------
 _ltp_model = None
-_hanlp_model = None  # placeholder for future HanLP integration
-
 
 def _get_analyzer() -> Tuple[str, Callable[[str], List[Tuple[str, str, str]]]]:
     """
     Returns (mode, analyzer_fn) where analyzer_fn(text) -> [(word, pos, ner)]
-    Order: LTP (if installed) -> HanLP (reserved) -> Jieba.
+    Order: LTP (if installed) -> Jieba.
     """
     global _ltp_model
     if _LTP_AVAILABLE:
@@ -133,10 +123,6 @@ def _get_analyzer() -> Tuple[str, Callable[[str], List[Tuple[str, str, str]]]]:
             return result
 
         return "ltp", _analyze
-
-    # HanLP placeholder: keep for future; fallback to jieba for now
-    # if _HANLP_AVAILABLE:
-    #     ...
 
     def _jieba_analyze(text: str) -> List[Tuple[str, str, str]]:
         return [(w.word, w.flag, "") for w in pseg.cut(text)]
