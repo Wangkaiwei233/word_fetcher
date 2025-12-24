@@ -9,124 +9,160 @@
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
   <body>
-    <div class="bg-glow"></div>
-
-    <div class="container">
-      <header>
-        <h1>Word Fetcher</h1>
-        <p>专业中文名词提取与定位分析</p>
-      </header>
-
-      <section class="card-panel">
-        <div class="upload-zone">
-          <input id="file" type="file" accept=".pdf,.docx" />
-          <button id="uploadBtn" class="btn btn-primary">
-            <i data-lucide="upload-cloud"></i>
-            开始提取文本
-          </button>
+    <div class="container full-height">
+      <header class="main-header">
+        <div class="header-left">
+          <h1>Word Fetcher</h1>
+          <p>专业中文名词提取与定位分析</p>
         </div>
-
-        <div class="status-bar" id="statusBarContainer">
-          <div class="status-info">
-            <span id="statusText">等待选择文件</span>
-            <span id="progressPct">0%</span>
-          </div>
-          <div class="progress-track">
-            <div id="progressBar" class="progress-fill"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card-panel">
-        <div class="filters">
-          <div class="filter-group">
-            <label for="query">关键词搜索</label>
-            <input id="query" class="input-field" placeholder="输入名词..." />
-          </div>
-          <div class="filter-group">
-            <label for="sort">排序方式</label>
-            <select id="sort" class="input-field">
-              <option value="count_desc">词频从高到低</option>
-              <option value="count_asc">词频从低到高</option>
-              <option value="alpha">按字典序</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="minLen">最小长度限制</label>
-            <select id="minLen" class="input-field">
-              <option value="1">1 (全选)</option>
-              <option value="2" selected>2 (常用)</option>
-              <option value="3">3 (较长)</option>
-            </select>
-          </div>
-        </div>
-
-        <span id="nounsMeta" class="noun-meta">待生成名词列表...</span>
-        
-        <div id="nouns" class="noun-grid">
-          <div class="empty-state">
-            <i data-lucide="file-text"></i>
-            <p>尚未上传文件或没有提取到名词</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card-panel">
-        <div class="filters">
-          <div class="filter-group">
-            <label>下载当前词典</label>
-            <button id="dictDownload" class="btn btn-primary">
-              <i data-lucide="download"></i> 下载 custom_dict.txt
+        <div class="header-right">
+          <div class="header-actions">
+            <div class="status-mini" id="statusBarContainer" style="margin-right: 16px;">
+              <span id="statusText" style="font-size: 0.75rem; color: var(--muted);">等待上传</span>
+              <span id="progressPct" style="font-size: 0.7rem; color: var(--primary); margin-left: 4px; font-weight: 600;">0%</span>
+              <div class="progress-bar mini" style="width: 60px; margin-left: 8px;">
+                <div id="progressBar" class="progress-value"></div>
+              </div>
+            </div>
+            <button id="openUploadBtn" class="btn btn-sm btn-primary">
+              <i data-lucide="upload-cloud"></i> 上传文件
+            </button>
+            <button id="openMarksBtn" class="btn btn-sm">
+              <i data-lucide="bookmark"></i> 标记收藏
+            </button>
+            <button id="openDictBtn" class="btn btn-sm">
+              <i data-lucide="book"></i> 词典管理
             </button>
           </div>
-          <div class="filter-group">
-            <label>导入/替换词典（覆盖）</label>
-            <div class="dict-upload">
-              <input id="dictFile" type="file" accept=".txt" />
-              <button id="dictUpload" class="btn">
-                <i data-lucide="upload"></i> 上传词典
-              </button>
-            </div>
-            <small style="color: var(--muted);">格式：一行一个词（可选 频率 词性）；上传后即时生效</small>
-          </div>
         </div>
-      </section>
+      </header>
+
+      <main class="main-content">
+        <!-- Main Content: Results -->
+        <section class="results-area card">
+          <div class="filters-bar">
+            <div class="filter-item">
+              <label>关键词搜索</label>
+              <input id="query" class="input-select" style="min-width: 200px;" placeholder="搜索名词..." />
+            </div>
+            <div class="filter-item">
+              <label>排序方式</label>
+              <select id="sort" class="input-select">
+                <option value="count_desc">词频（最高）</option>
+                <option value="count_asc">词频（最低）</option>
+                <option value="alpha">字母排序</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>最小长度</label>
+              <select id="minLen" class="input-select" style="min-width: 80px;">
+                <option value="2" selected>2+</option>
+                <option value="3">3+</option>
+              </select>
+            </div>
+            <div class="filter-item" style="margin-left: auto;">
+               <div class="noun-stats" id="nounsMeta" style="margin-bottom: 0;">待分析文件...</div>
+            </div>
+          </div>
+
+          <div class="nouns-outer-container">
+            <div id="nouns" class="noun-grid-horizontal">
+              <div class="empty-state">
+                <i data-lucide="file-text"></i>
+                <p>上传并分析文件后，名词卡片将在此区域横向显示</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagination Controls (Hidden for horizontal scroll) -->
+          <div id="pagination" class="pagination-container" style="display: none;">
+          </div>
+        </section>
+      </main>
     </div>
 
-    <!-- Drawer System -->
-    <div id="drawerOverlay" class="drawer-overlay"></div>
-    <div id="drawerContent" class="drawer-content">
-      <div class="drawer-header">
-        <div>
-          <h2 id="drawerTitle">名词详情</h2>
-          <p id="drawerSubtitle" style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;"></p>
-          <div id="drawerDictStatus" class="badge" style="margin-top:6px;">词典状态</div>
+    <!-- Upload Modal -->
+    <div id="uploadOverlay" class="drawer-backdrop"></div>
+    <div id="uploadModal" class="dict-modal">
+      <div class="modal-header">
+        <h3 class="card-title" style="margin-bottom: 0;"><i data-lucide="upload-cloud"></i> 上传分析</h3>
+        <button id="closeUploadBtn" class="btn btn-sm"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="upload-area">
+          <input id="file" type="file" accept=".pdf,.docx" />
+          <div class="upload-icon"><i data-lucide="file-plus"></i></div>
+          <div class="upload-text">选择或拖拽文件</div>
+          <div class="upload-hint">支持 .pdf, .docx 格式</div>
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button id="drawerAddDict" class="btn btn-primary" style="display:none;">
-            <i data-lucide="plus"></i> 添加到词典
+        <button id="uploadBtn" class="btn btn-primary" style="width: 100%; margin-top: 16px;">
+          开始分析文本
+        </button>
+      </div>
+    </div>
+
+    <!-- Marks Modal -->
+    <div id="marksOverlay" class="drawer-backdrop"></div>
+    <div id="marksModal" class="dict-modal" style="width: min(600px, 95%);">
+      <div class="modal-header">
+        <h3 class="card-title" style="margin-bottom: 0;"><i data-lucide="bookmark"></i> 标记收藏</h3>
+        <button id="closeMarksBtn" class="btn btn-sm"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <div id="marksEmpty" class="empty-state" style="padding: 20px 0;">
+          <p>暂无标记内容</p>
+        </div>
+        <div id="marksGrid" class="marks-grid" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        <button id="marksRefresh" class="btn btn-sm" style="width: 100%; margin-top: 12px;">刷新列表</button>
+      </div>
+    </div>
+    </div>
+
+    <!-- Dictionary Modal -->
+    <div id="dictOverlay" class="drawer-backdrop"></div>
+    <div id="dictModal" class="dict-modal">
+      <div class="modal-header">
+        <h3 class="card-title" style="margin-bottom: 0;"><i data-lucide="book"></i> 词典管理</h3>
+        <button id="closeDictBtn" class="btn btn-sm"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="card" style="margin-bottom: 16px;">
+          <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导出当前项目使用的自定义词典文件。</p>
+          <button id="dictDownload" class="btn" style="width: 100%;">
+            <i data-lucide="download"></i> 导出 custom_dict.txt
           </button>
-          <button id="drawerClose" class="btn">
+        </div>
+        <div class="card">
+          <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导入/覆盖自定义词典</p>
+          <div class="dict-upload-box">
+            <input id="dictFile" type="file" accept=".txt" />
+            <button id="dictUpload" class="btn btn-primary" style="margin-top: 8px; width: 100%;">
+              <i data-lucide="upload"></i> 立即上传
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer / Modal -->
+    <div id="drawerOverlay" class="drawer-backdrop"></div>
+    <div id="drawerContent" class="drawer">
+      <div class="drawer-header">
+        <div class="drawer-title-area">
+          <h2 id="drawerTitle">名词详情</h2>
+          <div id="drawerSubtitle" class="drawer-subtitle"></div>
+          <div id="drawerDictStatus" class="badge" style="margin-top: 8px;"></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="drawerAddDict" class="btn btn-primary btn-sm" style="display: none;">
+            <i data-lucide="plus"></i> 添至词典
+          </button>
+          <button id="drawerClose" class="btn btn-sm">
             <i data-lucide="x"></i>
           </button>
         </div>
       </div>
-      <div id="occList" class="occ-container"></div>
-    </div>
-
-    <!-- Marks Section -->
-    <div class="container">
-      <section class="card-panel">
-        <div class="status-info" style="margin-bottom:12px;">
-          <span>已标记句子</span>
-          <button id="marksRefresh" class="btn">刷新</button>
-        </div>
-        <div id="marksEmpty" class="empty-state" style="display:none; padding:32px 12px;">
-          <i data-lucide="bookmark"></i>
-          <p>还没有标记的句子</p>
-        </div>
-        <div id="marksGrid" class="marks-grid"></div>
-      </section>
+      <div id="occList" class="occ-list"></div>
     </div>
 
     <script src="/static/app.js"></script>

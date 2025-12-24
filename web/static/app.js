@@ -7,11 +7,20 @@ let uploadingDict = false;
 let drawerState = { noun: "", count: 0, inDict: false };
 let marksCache = [];
 
+// Pagination state
+let currentPage = 1;
+const pageSize = 200; // Increase page size for horizontal scroll layout
+
 function setStatus(text, progress) {
-  $("statusText").textContent = text;
+  const statusText = $("statusText");
+  const progressBar = $("progressBar");
+  const progressPct = $("progressPct");
+
+  if (statusText) statusText.textContent = text;
+  
   const pct = Math.max(0, Math.min(100, progress ?? 0));
-  $("progressBar").style.width = `${pct}%`;
-  $("progressPct").textContent = `${pct}%`;
+  if (progressBar) progressBar.style.width = `${pct}%`;
+  if (progressPct) progressPct.textContent = `${pct}%`;
 }
 
 function escapeHtml(str) {
@@ -57,19 +66,23 @@ async function pollStatus() {
 
     if (st.state === "done") {
       stopPolling();
+      $("uploadBtn").disabled = false;
       await refreshNouns();
     }
     if (st.state === "error") {
       stopPolling();
+      $("uploadBtn").disabled = false;
     }
   } catch (e) {
     setStatus(`发生错误: ${e.message}`, 100);
+    $("uploadBtn").disabled = false;
     stopPolling();
   }
 }
 
 async function refreshNouns() {
   if (!currentJobId) return;
+  currentPage = 1; // Reset to first page on refresh/filter
   const query = $("query").value.trim();
   const sort = $("sort").value;
   try {
@@ -89,7 +102,7 @@ function renderNouns() {
   if (nounsCache.length > 0) {
     metaEl.textContent = `找到 ${nounsCache.length} 个名词，已显示 ${filtered.length} 个`;
   } else {
-    metaEl.textContent = "未提取到相关名词";
+    metaEl.textContent = "未解析或未提取到相关名词";
   }
 
   const el = $("nouns");
@@ -102,26 +115,96 @@ function renderNouns() {
         <p>没有找到匹配的名词</p>
       </div>
     `;
+    $("pagination").style.display = "none";
     lucide.createIcons();
     return;
   }
 
-  for (const item of filtered) {
+  // Pagination logic
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+  
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageItems = filtered.slice(start, end);
+
+  for (const item of pageItems) {
     const card = document.createElement("div");
     card.className = "noun-card";
     card.innerHTML = `
-      <div style="display:flex; flex-direction:column; gap:6px;">
-        <span class="noun-text">${escapeHtml(item.noun)}</span>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          ${item.in_dict ? '<span class="badge success"><i data-lucide="check"></i> 词典</span>' : ""}
-          ${item.maybe_wrong ? '<span class="badge danger"><i data-lucide="alert-triangle"></i> 可能有误</span>' : ""}
-        </div>
+      <div class="noun-header">
+        <span class="noun-word">${escapeHtml(item.noun)}</span>
+        <span class="noun-count">${escapeHtml(item.count)}</span>
       </div>
-      <span class="noun-count">${escapeHtml(item.count)}</span>
+      <div class="noun-badges">
+        ${item.in_dict ? '<span class="badge badge-dict"><i data-lucide="check" style="width:12px"></i> 已收录</span>' : ""}
+        ${item.maybe_wrong ? '<span class="badge badge-error"><i data-lucide="alert-triangle" style="width:12px"></i> 有误</span>' : ""}
+      </div>
     `;
     card.addEventListener("click", () => openDrawer(item.noun, item.count, item.in_dict, item.maybe_wrong));
     el.appendChild(card);
   }
+
+  renderPagination(totalPages);
+  lucide.createIcons();
+}
+
+function renderPagination(totalPages) {
+  const container = $("pagination");
+  if (totalPages <= 1) {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "flex";
+  container.innerHTML = "";
+
+  const createBtn = (page, text, active = false, disabled = false) => {
+    const btn = document.createElement("button");
+    btn.className = `page-btn ${active ? "active" : ""}`;
+    btn.innerHTML = text;
+    btn.disabled = disabled;
+    if (!disabled && !active) {
+      btn.addEventListener("click", () => {
+        currentPage = page;
+        renderNouns();
+        window.scrollTo({ top: $("nouns").offsetTop - 100, behavior: "smooth" });
+      });
+    }
+    return btn;
+  };
+
+  // Prev
+  container.appendChild(createBtn(currentPage - 1, '<i data-lucide="chevron-left" style="width:16px"></i>', false, currentPage === 1));
+
+  // Page Numbers (Smart pagination: [1] ... [current-1] [current] [current+1] ... [last])
+  let pages = [];
+  if (totalPages <= 7) {
+    pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  } else {
+    if (currentPage <= 4) {
+      pages = [1, 2, 3, 4, 5, "...", totalPages];
+    } else if (currentPage >= totalPages - 3) {
+      pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+    }
+  }
+
+  pages.forEach((p) => {
+    if (p === "...") {
+      const dots = document.createElement("span");
+      dots.className = "page-dots";
+      dots.textContent = "...";
+      container.appendChild(dots);
+    } else {
+      container.appendChild(createBtn(p, p, p === currentPage));
+    }
+  });
+
+  // Next
+  container.appendChild(createBtn(currentPage + 1, '<i data-lucide="chevron-right" style="width:16px"></i>', false, currentPage === totalPages));
+  
+  // Update icons for the new buttons
   lucide.createIcons();
 }
 
@@ -158,21 +241,23 @@ async function loadOccurrences(noun) {
     
     for (const x of occ) {
       const item = document.createElement("div");
-      item.className = "occ-item";
+      item.className = "occ-card";
       item.innerHTML = `
-        <div class="occ-loc">PAGE ${x.page} · LINE ${x.line}</div>
-        <div class="occ-sentence">${highlight(x.sentence || "", noun)}</div>
+        <div class="occ-meta">
+          <span>PAGE ${x.page} · LINE ${x.line}</span>
+        </div>
+        <div class="occ-text">${highlight(x.sentence || "", noun)}</div>
+        <div class="occ-actions" style="margin-top: 12px; display: flex; justify-content: flex-end;"></div>
       `;
-      const actions = document.createElement("div");
-      actions.className = "occ-actions";
+      const actions = item.querySelector(".occ-actions");
       const markBtn = document.createElement("button");
-      markBtn.className = "btn";
-      markBtn.textContent = isMarked(noun, x) ? "取消标记" : "标记";
+      markBtn.className = "btn btn-sm";
+      markBtn.innerHTML = isMarked(noun, x) ? '<i data-lucide="bookmark-minus" style="width:14px"></i> 取消标记' : '<i data-lucide="bookmark-plus" style="width:14px"></i> 标记句子';
       markBtn.addEventListener("click", () => markSentence(noun, x));
       actions.appendChild(markBtn);
-      item.appendChild(actions);
       list.appendChild(item);
     }
+    lucide.createIcons();
   } catch (e) {
     $("occList").innerHTML = `<div class="empty-state"><p>加载失败: ${e.message}</p></div>`;
   }
@@ -181,18 +266,15 @@ async function loadOccurrences(noun) {
 function updateDrawerDictStatus() {
   const status = $("drawerDictStatus");
   const addBtn = $("drawerAddDict");
+  status.className = "badge"; // reset
   if (drawerState.inDict) {
-    status.textContent = "词典状态：已收录";
-    status.classList.add("success");
-    status.classList.remove("danger");
+    status.textContent = "已收录至词典";
+    status.classList.add("badge-dict");
     addBtn.style.display = "none";
   } else {
-    status.textContent = drawerState.maybeWrong ? "词典状态：未收录（可能有误）" : "词典状态：未收录";
-    status.classList.remove("success");
+    status.textContent = drawerState.maybeWrong ? "未收录（可能有误）" : "尚未收录";
     if (drawerState.maybeWrong) {
-      status.classList.add("danger");
-    } else {
-      status.classList.remove("danger");
+      status.classList.add("badge-error");
     }
     addBtn.style.display = "inline-flex";
   }
@@ -238,15 +320,13 @@ function isMarked(noun, occ) {
 }
 
 function renderOccurrencesWithMarks(currentNoun) {
-  // re-render the current occList buttons to reflect mark state
-  const buttons = Array.from(document.querySelectorAll(".occ-item"));
-  if (!buttons.length) return;
+  const cards = Array.from(document.querySelectorAll(".occ-card"));
+  if (!cards.length) return;
   marksCache = marksCache || [];
-  const occDivs = buttons;
-  occDivs.forEach((div) => {
-    const locText = div.querySelector(".occ-loc")?.textContent || "";
-    const match = /PAGE\\s+(\\d+)\\s+·\\s+LINE\\s+(\\d+)/.exec(locText);
-    const sentenceEl = div.querySelector(".occ-sentence");
+  cards.forEach((div) => {
+    const locText = div.querySelector(".occ-meta")?.textContent || "";
+    const match = /PAGE\s+(\d+)\s+·\s+LINE\s+(\d+)/.exec(locText);
+    const sentenceEl = div.querySelector(".occ-text");
     const sentence = sentenceEl ? sentenceEl.textContent || "" : "";
     if (!match) return;
     const page = parseInt(match[1], 10);
@@ -254,9 +334,10 @@ function renderOccurrencesWithMarks(currentNoun) {
     const marked = isMarked(currentNoun, { page, line, sentence });
     const btn = div.querySelector(".occ-actions .btn");
     if (btn) {
-      btn.textContent = marked ? "取消标记" : "标记";
+      btn.innerHTML = marked ? '<i data-lucide="bookmark-minus" style="width:14px"></i> 取消标记' : '<i data-lucide="bookmark-plus" style="width:14px"></i> 标记句子';
     }
   });
+  lucide.createIcons();
 }
 
 async function refreshMarks() {
@@ -286,8 +367,8 @@ function renderMarks() {
     const card = document.createElement("div");
     card.className = "mark-card";
     card.innerHTML = `
-      <div class="mark-meta">PAGE ${m.page} · LINE ${m.line} · ${escapeHtml(m.noun)}</div>
-      <div class="occ-sentence">${escapeHtml(m.sentence || "")}</div>
+      <div class="mark-meta">P${m.page} L${m.line} · ${escapeHtml(m.noun)}</div>
+      <div class="mark-text">${highlight(m.sentence || "", m.noun)}</div>
     `;
     grid.appendChild(card);
   }
@@ -301,6 +382,7 @@ async function uploadFile() {
     return;
   }
 
+  closeUploadModal(); // Auto close on start
   stopPolling();
   nounsCache = [];
   renderNouns();
@@ -354,22 +436,92 @@ async function uploadDict() {
   }
 }
 
+function openUploadModal() {
+  $("uploadOverlay").classList.add("active");
+  $("uploadModal").classList.add("active");
+}
+
+function closeUploadModal() {
+  $("uploadOverlay").classList.remove("active");
+  $("uploadModal").classList.remove("active");
+}
+
+function openMarksModal() {
+  $("marksOverlay").classList.add("active");
+  $("marksModal").classList.add("active");
+  refreshMarks();
+}
+
+function closeMarksModal() {
+  $("marksOverlay").classList.remove("active");
+  $("marksModal").classList.remove("active");
+}
+
+function openDictModal() {
+  $("dictOverlay").classList.add("active");
+  $("dictModal").classList.add("active");
+}
+
+function closeDictModal() {
+  $("dictOverlay").classList.remove("active");
+  $("dictModal").classList.remove("active");
+}
+
 function wire() {
+  $("file").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const uploadArea = document.querySelector(".upload-area");
+    const uploadText = uploadArea.querySelector(".upload-text");
+    const uploadHint = uploadArea.querySelector(".upload-hint");
+    if (file) {
+      uploadText.textContent = file.name;
+      uploadText.style.color = "var(--primary)";
+      uploadHint.textContent = `文件大小: ${(file.size / 1024).toFixed(1)} KB`;
+      uploadArea.style.borderColor = "var(--primary)";
+      uploadArea.style.background = "#eff6ff";
+    } else {
+      uploadText.textContent = "选择或拖拽文件";
+      uploadText.style.color = "";
+      uploadHint.textContent = "支持 .pdf, .docx 格式";
+      uploadArea.style.borderColor = "";
+      uploadArea.style.background = "";
+    }
+  });
+
   $("uploadBtn").addEventListener("click", uploadFile);
   $("query").addEventListener("input", refreshNouns);
   $("sort").addEventListener("change", refreshNouns);
-  $("minLen").addEventListener("change", renderNouns);
+  $("minLen").addEventListener("change", () => {
+    currentPage = 1;
+    renderNouns();
+  });
 
   $("dictDownload").addEventListener("click", downloadDict);
   $("dictUpload").addEventListener("click", uploadDict);
   $("drawerAddDict").addEventListener("click", addCurrentNounToDict);
   $("marksRefresh").addEventListener("click", refreshMarks);
 
+  $("openUploadBtn").addEventListener("click", openUploadModal);
+  $("closeUploadBtn").addEventListener("click", closeUploadModal);
+  $("openMarksBtn").addEventListener("click", openMarksModal);
+  $("closeMarksBtn").addEventListener("click", closeMarksModal);
+  $("openDictBtn").addEventListener("click", openDictModal);
+  $("closeDictBtn").addEventListener("click", closeDictModal);
+
+  $("uploadOverlay").addEventListener("click", closeUploadModal);
+  $("marksOverlay").addEventListener("click", closeMarksModal);
+  $("dictOverlay").addEventListener("click", closeDictModal);
+  
   $("drawerClose").addEventListener("click", closeDrawer);
   $("drawerOverlay").addEventListener("click", closeDrawer);
   
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeDrawer();
+    if (e.key === "Escape") {
+      closeUploadModal();
+      closeMarksModal();
+      closeDictModal();
+      closeDrawer();
+    }
   });
 }
 
