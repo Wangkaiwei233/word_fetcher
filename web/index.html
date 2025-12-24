@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word Fetcher | 中文名词提取工具</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+
+    <div class="container">
+      <header>
+        <h1>Word Fetcher</h1>
+        <p>专业中文名词提取与定位分析</p>
+      </header>
+
+      <section class="card-panel">
+        <div class="upload-zone">
+          <input id="file" type="file" accept=".pdf,.docx" />
+          <button id="uploadBtn" class="btn btn-primary">
+            <i data-lucide="upload-cloud"></i>
+            开始提取文本
+          </button>
+        </div>
+
+        <div class="status-bar" id="statusBarContainer">
+          <div class="status-info">
+            <span id="statusText">等待选择文件</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card-panel">
+        <div class="filters">
+          <div class="filter-group">
+            <label for="query">关键词搜索</label>
+            <input id="query" class="input-field" placeholder="输入名词..." />
+          </div>
+          <div class="filter-group">
+            <label for="sort">排序方式</label>
+            <select id="sort" class="input-field">
+              <option value="count_desc">词频从高到低</option>
+              <option value="count_asc">词频从低到高</option>
+              <option value="alpha">按字典序</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="minLen">最小长度限制</label>
+            <select id="minLen" class="input-field">
+              <option value="1">1 (全选)</option>
+              <option value="2" selected>2 (常用)</option>
+              <option value="3">3 (较长)</option>
+            </select>
+          </div>
+        </div>
+
+        <span id="nounsMeta" class="noun-meta">待生成名词列表...</span>
+        
+        <div id="nouns" class="noun-grid">
+          <div class="empty-state">
+            <i data-lucide="file-text"></i>
+            <p>尚未上传文件或没有提取到名词</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Drawer System -->
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+    <div id="drawerContent" class="drawer-content">
+      <div class="drawer-header">
+        <div>
+          <h2 id="drawerTitle">名词详情</h2>
+          <p id="drawerSubtitle" style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;"></p>
+        </div>
+        <button id="drawerClose" class="btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="occList" class="occ-container"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>
+      // Initialize Lucide icons
+      lucide.createIcons();
+    </script>
+  </body>
+</html>
