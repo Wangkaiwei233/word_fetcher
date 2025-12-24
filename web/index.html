@@ -126,29 +126,31 @@
         <button id="closeDictBtn" class="btn btn-sm"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
-        <div class="card" style="margin-bottom: 16px;">
-          <div style="display:flex; justify-content: space-between; align-items: center; gap: 8px;">
-            <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 0;">自定义词列表（点击可移除）</p>
-            <button id="dictRefresh" class="btn btn-sm" style="white-space: nowrap;"><i data-lucide="refresh-ccw"></i> 刷新</button>
+        <div class="dict-modal-grid">
+          <div class="card">
+            <div style="display:flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 0;">自定义词列表（点击可移除）</p>
+              <button id="dictRefresh" class="btn btn-sm" style="white-space: nowrap;"><i data-lucide="refresh-ccw"></i> 刷新</button>
+            </div>
+            <div id="dictWords" class="marks-grid" style="margin-top: 10px; max-height: 240px; overflow-y: auto;"></div>
+            <div id="dictWordsEmpty" class="empty-state" style="padding: 12px 0; display: none;">
+              <p>暂无自定义词</p>
+            </div>
           </div>
-          <div id="dictWords" class="marks-grid" style="margin-top: 10px; max-height: 240px; overflow-y: auto;"></div>
-          <div id="dictWordsEmpty" class="empty-state" style="padding: 12px 0; display: none;">
-            <p>暂无自定义词</p>
-          </div>
-        </div>
-        <div class="card" style="margin-bottom: 16px;">
-          <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导出当前项目使用的自定义词典文件。</p>
-          <button id="dictDownload" class="btn" style="width: 100%;">
-            <i data-lucide="download"></i> 导出 custom_dict.txt
-          </button>
-        </div>
-        <div class="card">
-          <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导入/覆盖自定义词典</p>
-          <div class="dict-upload-box">
-            <input id="dictFile" type="file" accept=".txt" />
-            <button id="dictUpload" class="btn btn-primary" style="margin-top: 8px; width: 100%;">
-              <i data-lucide="upload"></i> 立即上传
+          <div class="card">
+            <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导出当前项目使用的自定义词典文件。</p>
+            <button id="dictDownload" class="btn" style="width: 100%;">
+              <i data-lucide="download"></i> 导出 custom_dict.txt
             </button>
+          </div>
+          <div class="card">
+            <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">导入/覆盖自定义词典</p>
+            <div class="dict-upload-box">
+              <input id="dictFile" type="file" accept=".txt" />
+              <button id="dictUpload" class="btn btn-primary" style="margin-top: 8px; width: 100%;">
+                <i data-lucide="upload"></i> 立即上传
+              </button>
+            </div>
           </div>
         </div>
       </div>

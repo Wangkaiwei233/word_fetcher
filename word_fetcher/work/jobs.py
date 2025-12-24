@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -51,8 +52,25 @@ async def create_job(upload) -> Job:
 
 
 def _soffice_path() -> str:
-    # User can set SOFFICE_PATH; otherwise rely on PATH.
-    return str(Path((__import__("os").getenv("SOFFICE_PATH") or "soffice")))
+    """
+    Resolve soffice binary path.
+    Priority: SOFFICE_PATH env -> PATH lookup -> common macOS path.
+    Raise FileNotFoundError with clear guidance when missing.
+    """
+    env_path = os.getenv("SOFFICE_PATH")
+    if env_path:
+        p = Path(env_path)
+        if p.exists():
+            return str(p)
+    candidates = [
+        "soffice",
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+    ]
+    for cand in candidates:
+        resolved = shutil.which(cand) if not Path(cand).is_absolute() else (cand if Path(cand).exists() else None)
+        if resolved:
+            return str(resolved)
+    raise FileNotFoundError("LibreOffice 未安装或未找到 soffice，可设置 SOFFICE_PATH 指向 soffice 可执行文件")
 
 
 def _convert_docx_to_pdf(docx_path: Path, out_dir: Path) -> Path:
