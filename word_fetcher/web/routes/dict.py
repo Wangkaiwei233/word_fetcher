@@ -3,7 +3,12 @@ from __future__ import annotations
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from word_fetcher.work.nlp import add_to_custom_dict, reload_resources
+from word_fetcher.work.nlp import (
+    add_to_custom_dict,
+    list_custom_dict_words,
+    reload_resources,
+    remove_from_custom_dict,
+)
 from word_fetcher.work.storage import custom_dict_path
 
 router = APIRouter(prefix="/dict")
@@ -36,5 +41,21 @@ def add_word(word: str | None = Query(default=None), word_form: str | None = For
         raise HTTPException(status_code=400, detail="empty word")
     added = add_to_custom_dict(w)
     return {"added": added}
+
+
+@router.get("/words")
+def list_words():
+    return {"words": list_custom_dict_words()}
+
+
+@router.delete("/words")
+def remove_word(word: str | None = Query(default=None)):
+    w = (word or "").strip()
+    if not w:
+        raise HTTPException(status_code=400, detail="empty word")
+    removed = remove_from_custom_dict(w)
+    if not removed:
+        raise HTTPException(status_code=404, detail="word not found")
+    return {"removed": True}
 
 

@@ -6,6 +6,7 @@ let nounsCache = [];
 let uploadingDict = false;
 let drawerState = { noun: "", count: 0, inDict: false };
 let marksCache = [];
+let dictWordsCache = [];
 
 // Pagination state
 let currentPage = 1;
@@ -427,12 +428,63 @@ async function uploadDict() {
     form.append("file", file);
     await api("/api/dict", { method: "POST", body: form });
     alert("词典已更新，将应用于后续解析任务");
+    await loadDictWords();
   } catch (e) {
     alert(`上传失败：${e.message}`);
   } finally {
     uploadingDict = false;
     $("dictUpload").disabled = false;
     $("dictUpload").textContent = "上传词典";
+  }
+}
+
+async function loadDictWords() {
+  try {
+    const res = await api("/api/dict/words");
+    dictWordsCache = res?.words || [];
+    renderDictWords();
+  } catch (e) {
+    console.error("加载词典失败", e);
+    alert(`加载词典失败：${e.message}`);
+  }
+}
+
+function renderDictWords() {
+  const listEl = $("dictWords");
+  const emptyEl = $("dictWordsEmpty");
+  listEl.innerHTML = "";
+  if (!dictWordsCache.length) {
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  for (const w of dictWordsCache) {
+    const card = document.createElement("div");
+    card.className = "mark-card";
+    card.style.cursor = "pointer";
+    card.innerHTML = `
+      <div class="mark-meta">${escapeHtml(w)}</div>
+      <div class="mark-text" style="display:flex; justify-content:flex-end; gap:8px;">
+        <span class="badge badge-error" style="cursor:pointer;">移出词典</span>
+      </div>
+    `;
+    card.addEventListener("click", () => removeDictWord(w));
+    listEl.appendChild(card);
+  }
+}
+
+async function removeDictWord(word) {
+  if (!word) return;
+  const ok = confirm(`确定移除「${word}」吗？`);
+  if (!ok) return;
+  try {
+    await api(`/api/dict/words?word=${encodeURIComponent(word)}`, { method: "DELETE" });
+    dictWordsCache = dictWordsCache.filter((w) => w !== word);
+    renderDictWords();
+    alert("已移出词典");
+  } catch (e) {
+    alert(`移除失败：${e.message}`);
   }
 }
 
@@ -460,6 +512,7 @@ function closeMarksModal() {
 function openDictModal() {
   $("dictOverlay").classList.add("active");
   $("dictModal").classList.add("active");
+  loadDictWords();
 }
 
 function closeDictModal() {
@@ -498,6 +551,7 @@ function wire() {
 
   $("dictDownload").addEventListener("click", downloadDict);
   $("dictUpload").addEventListener("click", uploadDict);
+  $("dictRefresh").addEventListener("click", loadDictWords);
   $("drawerAddDict").addEventListener("click", addCurrentNounToDict);
   $("marksRefresh").addEventListener("click", refreshMarks);
 

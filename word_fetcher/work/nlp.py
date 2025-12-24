@@ -82,6 +82,32 @@ def _load_custom_dict(path: Path) -> None:
         jieba.add_word(word, freq=freq, tag=tag)
 
 
+def list_custom_dict_words() -> List[str]:
+    """
+    Return all words in the custom dict, deduplicated and sorted.
+    """
+    return sorted(_parse_dict_words(custom_dict_path()))
+
+
+def remove_from_custom_dict(word: str) -> bool:
+    """
+    Remove a word from custom dict if present. Returns True if removed.
+    """
+    word = word.strip()
+    if not word:
+        return False
+    path = custom_dict_path()
+    if not path.exists():
+        return False
+    words = _parse_dict_words(path)
+    if word not in words:
+        return False
+    remaining = [w for w in words if w != word]
+    path.write_text("\n".join(remaining) + ("\n" if remaining else ""), encoding="utf-8")
+    reload_resources()
+    return True
+
+
 @lru_cache(maxsize=1)
 def _resources():
     sw = _load_stopwords(stopwords_path())
