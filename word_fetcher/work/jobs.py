@@ -5,12 +5,12 @@ import shutil
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import fitz  # PyMuPDF
 from word_fetcher.work.models import Job, JobStatus
-from word_fetcher.work.nlp import get_dict_words, iter_nouns, reload_resources
-from word_fetcher.work.storage import job_dir, read_json, write_json
+from word_fetcher.work.nlp import get_dict_words, is_maybe_wrong_word, iter_nouns, reload_resources
+from word_fetcher.work.storage import job_dir, job_marks_path, read_json, write_json
 
 
 _SENT_SPLIT_RE = re.compile(r"(?<=[。！？；…])")
@@ -172,6 +172,67 @@ def _load_result(job_id: str) -> Dict[str, Any]:
     return read_json(p)
 
 
+# --------- marks ----------
+def _load_marks(job_id: str) -> List[Dict[str, Any]]:
+    path = job_marks_path(job_id)
+    if not path.exists():
+        return []
+    return read_json(path)
+
+
+def list_marks(job_id: str) -> List[Dict[str, Any]]:
+    return _load_marks(job_id)
+
+
+def _mark_key(noun: str, page: int, line: int, sentence: str) -> str:
+    return f"{page}:{line}:{noun}:{sentence}"
+
+
+def add_mark(job_id: str, noun: str, page: int, line: int, sentence: str) -> Dict[str, Any]:
+    noun = str(noun).strip()
+    if not noun:
+        raise ValueError("noun required")
+    key = _mark_key(noun, int(page), int(line), str(sentence))
+    entry = {
+        "noun": noun,
+        "page": int(page),
+        "line": int(line),
+        "sentence": str(sentence),
+        "id": key,
+    }
+    marks = _load_marks(job_id)
+    # avoid duplicates
+    if any(m.get("id") == key for m in marks):
+        return entry
+    marks.append(entry)
+    write_json(job_marks_path(job_id), marks)
+    return entry
+
+
+def toggle_mark(job_id: str, noun: str, page: int, line: int, sentence: str) -> Dict[str, Any]:
+    noun = str(noun).strip()
+    if not noun:
+        raise ValueError("noun required")
+    key = _mark_key(noun, int(page), int(line), str(sentence))
+    marks = _load_marks(job_id)
+    remaining = [m for m in marks if m.get("id") != key]
+    if len(remaining) != len(marks):
+        # existed -> remove
+        write_json(job_marks_path(job_id), remaining)
+        return {"removed": True, "added": False, "id": key}
+    # not exist -> add
+    entry = {
+        "noun": noun,
+        "page": int(page),
+        "line": int(line),
+        "sentence": str(sentence),
+        "id": key,
+    }
+    remaining.append(entry)
+    write_json(job_marks_path(job_id), remaining)
+    return {"removed": False, "added": True, "id": key}
+
+
 def list_job_nouns(job_id: str, query: Optional[str], sort: str) -> List[Dict[str, Any]]:
     result = _load_result(job_id)
     nouns = list(result.get("nouns", []))
@@ -193,7 +254,9 @@ def list_job_nouns(job_id: str, query: Optional[str], sort: str) -> List[Dict[st
         nouns.sort(key=lambda x: (-int(x.get("count", 0)), str(x.get("noun", ""))))
 
     for item in nouns:
-        item["in_dict"] = item.get("noun") in dict_words
+        noun = item.get("noun")
+        item["in_dict"] = noun in dict_words
+        item["maybe_wrong"] = is_maybe_wrong_word(noun, dict_words)
 
     return nouns
 

@@ -296,6 +296,11 @@ input[type="file"]:hover {
   color: #34d399;
   background: rgba(16, 185, 129, 0.12);
 }
+.badge.danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+}
 
 .drawer-header .badge {
   margin-top: 6px;
@@ -363,6 +368,9 @@ input[type="file"]:hover {
   border: 1px solid var(--border);
   padding: 16px;
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .occ-loc {
@@ -375,6 +383,37 @@ input[type="file"]:hover {
 .occ-sentence {
   line-height: 1.6;
 }
+
+.occ-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tag-section {
+  margin-top: 16px;
+}
+
+.marks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.mark-card {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.mark-meta {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
 
 mark {
   background: var(--primary);

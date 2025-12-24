@@ -26,6 +26,10 @@ def job_dir(job_id: str) -> Path:
     return d
 
 
+def job_marks_path(job_id: str) -> Path:
+    return job_dir(job_id) / "marks.json"
+
+
 def write_json(path: Path, obj: Any) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")

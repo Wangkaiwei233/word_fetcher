@@ -114,6 +114,21 @@
       <div id="occList" class="occ-container"></div>
     </div>
 
+    <!-- Marks Section -->
+    <div class="container">
+      <section class="card-panel">
+        <div class="status-info" style="margin-bottom:12px;">
+          <span>已标记句子</span>
+          <button id="marksRefresh" class="btn">刷新</button>
+        </div>
+        <div id="marksEmpty" class="empty-state" style="display:none; padding:32px 12px;">
+          <i data-lucide="bookmark"></i>
+          <p>还没有标记的句子</p>
+        </div>
+        <div id="marksGrid" class="marks-grid"></div>
+      </section>
+    </div>
+
     <script src="/static/app.js"></script>
     <script>
       // Initialize Lucide icons

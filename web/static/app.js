@@ -5,6 +5,7 @@ let pollTimer = null;
 let nounsCache = [];
 let uploadingDict = false;
 let drawerState = { noun: "", count: 0, inDict: false };
+let marksCache = [];
 
 function setStatus(text, progress) {
   $("statusText").textContent = text;
@@ -111,18 +112,21 @@ function renderNouns() {
     card.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:6px;">
         <span class="noun-text">${escapeHtml(item.noun)}</span>
-        ${item.in_dict ? '<span class="badge success"><i data-lucide="check"></i> 词典</span>' : ""}
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${item.in_dict ? '<span class="badge success"><i data-lucide="check"></i> 词典</span>' : ""}
+          ${item.maybe_wrong ? '<span class="badge danger"><i data-lucide="alert-triangle"></i> 可能有误</span>' : ""}
+        </div>
       </div>
       <span class="noun-count">${escapeHtml(item.count)}</span>
     `;
-    card.addEventListener("click", () => openDrawer(item.noun, item.count, item.in_dict));
+    card.addEventListener("click", () => openDrawer(item.noun, item.count, item.in_dict, item.maybe_wrong));
     el.appendChild(card);
   }
   lucide.createIcons();
 }
 
-function openDrawer(noun, count, inDict) {
-  drawerState = { noun, count, inDict: !!inDict };
+function openDrawer(noun, count, inDict, maybeWrong) {
+  drawerState = { noun, count, inDict: !!inDict, maybeWrong: !!maybeWrong };
   $("drawerTitle").textContent = escapeHtml(noun);
   $("drawerSubtitle").textContent = `累计出现 ${count} 次`;
   updateDrawerDictStatus();
@@ -159,6 +163,14 @@ async function loadOccurrences(noun) {
         <div class="occ-loc">PAGE ${x.page} · LINE ${x.line}</div>
         <div class="occ-sentence">${highlight(x.sentence || "", noun)}</div>
       `;
+      const actions = document.createElement("div");
+      actions.className = "occ-actions";
+      const markBtn = document.createElement("button");
+      markBtn.className = "btn";
+      markBtn.textContent = isMarked(noun, x) ? "取消标记" : "标记";
+      markBtn.addEventListener("click", () => markSentence(noun, x));
+      actions.appendChild(markBtn);
+      item.appendChild(actions);
       list.appendChild(item);
     }
   } catch (e) {
@@ -172,10 +184,16 @@ function updateDrawerDictStatus() {
   if (drawerState.inDict) {
     status.textContent = "词典状态：已收录";
     status.classList.add("success");
+    status.classList.remove("danger");
     addBtn.style.display = "none";
   } else {
-    status.textContent = "词典状态：未收录";
+    status.textContent = drawerState.maybeWrong ? "词典状态：未收录（可能有误）" : "词典状态：未收录";
     status.classList.remove("success");
+    if (drawerState.maybeWrong) {
+      status.classList.add("danger");
+    } else {
+      status.classList.remove("danger");
+    }
     addBtn.style.display = "inline-flex";
   }
 }
@@ -197,6 +215,81 @@ async function addCurrentNounToDict() {
     }
   } catch (e) {
     alert(`添加失败：${e.message}`);
+  }
+}
+
+async function markSentence(noun, occ) {
+  if (!currentJobId) return;
+  try {
+    await api(
+      `/api/jobs/${currentJobId}/marks/toggle?noun=${encodeURIComponent(noun)}&page=${occ.page}&line=${occ.line}&sentence=${encodeURIComponent(occ.sentence || "")}`,
+      { method: "POST" }
+    );
+    await refreshMarks();
+    renderOccurrencesWithMarks(noun); // update buttons label
+  } catch (e) {
+    alert(`标记失败：${e.message}`);
+  }
+}
+
+function isMarked(noun, occ) {
+  const key = `${occ.page}:${occ.line}:${noun}:${occ.sentence || ""}`;
+  return marksCache.some((m) => m.id === key);
+}
+
+function renderOccurrencesWithMarks(currentNoun) {
+  // re-render the current occList buttons to reflect mark state
+  const buttons = Array.from(document.querySelectorAll(".occ-item"));
+  if (!buttons.length) return;
+  marksCache = marksCache || [];
+  const occDivs = buttons;
+  occDivs.forEach((div) => {
+    const locText = div.querySelector(".occ-loc")?.textContent || "";
+    const match = /PAGE\\s+(\\d+)\\s+·\\s+LINE\\s+(\\d+)/.exec(locText);
+    const sentenceEl = div.querySelector(".occ-sentence");
+    const sentence = sentenceEl ? sentenceEl.textContent || "" : "";
+    if (!match) return;
+    const page = parseInt(match[1], 10);
+    const line = parseInt(match[2], 10);
+    const marked = isMarked(currentNoun, { page, line, sentence });
+    const btn = div.querySelector(".occ-actions .btn");
+    if (btn) {
+      btn.textContent = marked ? "取消标记" : "标记";
+    }
+  });
+}
+
+async function refreshMarks() {
+  if (!currentJobId) return;
+  try {
+    marksCache = await api(`/api/jobs/${currentJobId}/marks`);
+    renderMarks();
+    // also update current occurrence buttons state
+    if (drawerState?.noun) {
+      renderOccurrencesWithMarks(drawerState.noun);
+    }
+  } catch (e) {
+    console.error("获取已标记失败", e);
+  }
+}
+
+function renderMarks() {
+  const grid = $("marksGrid");
+  const empty = $("marksEmpty");
+  grid.innerHTML = "";
+  if (!marksCache || marksCache.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  for (const m of marksCache) {
+    const card = document.createElement("div");
+    card.className = "mark-card";
+    card.innerHTML = `
+      <div class="mark-meta">PAGE ${m.page} · LINE ${m.line} · ${escapeHtml(m.noun)}</div>
+      <div class="occ-sentence">${escapeHtml(m.sentence || "")}</div>
+    `;
+    grid.appendChild(card);
   }
 }
 
@@ -270,6 +363,7 @@ function wire() {
   $("dictDownload").addEventListener("click", downloadDict);
   $("dictUpload").addEventListener("click", uploadDict);
   $("drawerAddDict").addEventListener("click", addCurrentNounToDict);
+  $("marksRefresh").addEventListener("click", refreshMarks);
 
   $("drawerClose").addEventListener("click", closeDrawer);
   $("drawerOverlay").addEventListener("click", closeDrawer);
