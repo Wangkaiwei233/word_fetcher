@@ -70,6 +70,27 @@
           </div>
         </div>
       </section>
+
+      <section class="card-panel">
+        <div class="filters">
+          <div class="filter-group">
+            <label>下载当前词典</label>
+            <button id="dictDownload" class="btn btn-primary">
+              <i data-lucide="download"></i> 下载 custom_dict.txt
+            </button>
+          </div>
+          <div class="filter-group">
+            <label>导入/替换词典（覆盖）</label>
+            <div class="dict-upload">
+              <input id="dictFile" type="file" accept=".txt" />
+              <button id="dictUpload" class="btn">
+                <i data-lucide="upload"></i> 上传词典
+              </button>
+            </div>
+            <small style="color: var(--muted);">格式：一行一个词（可选 频率 词性）；上传后即时生效</small>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- Drawer System -->
@@ -79,10 +100,16 @@
         <div>
           <h2 id="drawerTitle">名词详情</h2>
           <p id="drawerSubtitle" style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;"></p>
+          <div id="drawerDictStatus" class="badge" style="margin-top:6px;">词典状态</div>
         </div>
-        <button id="drawerClose" class="btn">
-          <i data-lucide="x"></i>
-        </button>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="drawerAddDict" class="btn btn-primary" style="display:none;">
+            <i data-lucide="plus"></i> 添加到词典
+          </button>
+          <button id="drawerClose" class="btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
       </div>
       <div id="occList" class="occ-container"></div>
     </div>

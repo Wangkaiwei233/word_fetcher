@@ -40,3 +40,18 @@ def utc_ms() -> int:
     return int(time.time() * 1000)
 
 
+# dictionary storage
+def dicts_dir() -> Path:
+    d = base_data_dir() / "dicts"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def custom_dict_path() -> Path:
+    return dicts_dir() / "custom_dict.txt"
+
+
+def stopwords_path() -> Path:
+    return dicts_dir() / "stopwords.txt"
+
+

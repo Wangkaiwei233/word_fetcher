@@ -40,6 +40,14 @@ python main.py
 
 浏览器打开：`http://127.0.0.1:8000/`
 
+## 词典与停用词（可自定义）
+
+- 默认词典：`data/dicts/custom_dict.txt`（已内置一份泛用行业词表），**一行一个词**；也支持扩展格式 `词  频率  词性`（频率/词性可省略）。
+- 停用词：`data/dicts/stopwords.txt`，一行一个。
+- 前端支持：
+  - **下载**当前词典：`GET /api/dict`
+  - **上传/导入**词典：`POST /api/dict`（覆盖旧词典，实时生效）
+
 ## API（前端也用这些）
 
 - `POST /api/upload`（multipart: file）

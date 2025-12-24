@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
-import jieba.posseg as pseg
-
 from word_fetcher.work.models import Job, JobStatus
+from word_fetcher.work.nlp import get_dict_words, iter_nouns, reload_resources
 from word_fetcher.work.storage import job_dir, read_json, write_json
 
 
@@ -101,11 +100,6 @@ def _sentences_from_line(line_text: str) -> List[str]:
     return parts if parts else [line_text.strip()]
 
 
-def _is_noun(flag: str) -> bool:
-    # jieba.posseg: n, nr, ns, nt, nz, ng...
-    return bool(flag) and flag.startswith("n")
-
-
 def _build_index(lines: List[Dict[str, Any]]) -> Dict[str, Any]:
     noun_counts: Dict[str, int] = {}
     occurrences_by_noun: Dict[str, List[Dict[str, Any]]] = {}
@@ -116,13 +110,7 @@ def _build_index(lines: List[Dict[str, Any]]) -> Dict[str, Any]:
         text = str(row["text"])
 
         for sent in _sentences_from_line(text):
-            for w in pseg.cut(sent):
-                noun = w.word.strip()
-                if not noun:
-                    continue
-                if not _is_noun(w.flag):
-                    continue
-
+            for noun, _flag in iter_nouns(sent):
                 noun_counts[noun] = noun_counts.get(noun, 0) + 1
                 occ = {"page": page, "line": line, "sentence": sent}
                 occurrences_by_noun.setdefault(noun, []).append(occ)
@@ -163,6 +151,9 @@ def run_job(job_id: str) -> None:
         _set_status(job_id, "running", 35, "extracting text")
         lines = _extract_pdf_lines(pdf_path)
 
+        _set_status(job_id, "running", 55, "loading dictionaries")
+        reload_resources()
+
         _set_status(job_id, "running", 70, "extracting nouns")
         result = _build_index(lines)
 
@@ -184,6 +175,7 @@ def _load_result(job_id: str) -> Dict[str, Any]:
 def list_job_nouns(job_id: str, query: Optional[str], sort: str) -> List[Dict[str, Any]]:
     result = _load_result(job_id)
     nouns = list(result.get("nouns", []))
+    dict_words = get_dict_words()
 
     if query:
         q = query.strip()
@@ -199,6 +191,9 @@ def list_job_nouns(job_id: str, query: Optional[str], sort: str) -> List[Dict[st
     else:
         # keep default
         nouns.sort(key=lambda x: (-int(x.get("count", 0)), str(x.get("noun", ""))))
+
+    for item in nouns:
+        item["in_dict"] = item.get("noun") in dict_words
 
     return nouns
 
