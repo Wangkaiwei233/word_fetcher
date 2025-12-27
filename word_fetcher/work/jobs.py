@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import os
 import re
 import shutil
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -49,55 +47,6 @@ async def create_job(upload) -> Job:
 
     _set_status(job_id, "queued", 0, "queued")
     return Job(job_id=job_id, filename=upload.filename, input_path=str(input_path))
-
-
-def _soffice_path() -> str:
-    """
-    Resolve soffice binary path.
-    Priority: SOFFICE_PATH env -> PATH lookup -> common macOS path.
-    Raise FileNotFoundError with clear guidance when missing.
-    """
-    env_path = os.getenv("SOFFICE_PATH")
-    if env_path:
-        p = Path(env_path)
-        if p.exists():
-            return str(p)
-    candidates = [
-        "soffice",
-        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
-    ]
-    for cand in candidates:
-        resolved = shutil.which(cand) if not Path(cand).is_absolute() else (cand if Path(cand).exists() else None)
-        if resolved:
-            return str(resolved)
-    raise FileNotFoundError("LibreOffice 未安装或未找到 soffice，可设置 SOFFICE_PATH 指向 soffice 可执行文件")
-
-
-def _convert_docx_to_pdf(docx_path: Path, out_dir: Path) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        _soffice_path(),
-        "--headless",
-        "--nologo",
-        "--nolockcheck",
-        "--nodefault",
-        "--nofirststartwizard",
-        "--convert-to",
-        "pdf",
-        "--outdir",
-        str(out_dir),
-        str(docx_path),
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(
-            "docx->pdf failed. Ensure LibreOffice is installed and `soffice` is available. "
-            f"stderr={proc.stderr.strip()}"
-        )
-    pdf_path = out_dir / (docx_path.stem + ".pdf")
-    if not pdf_path.exists():
-        raise RuntimeError("docx->pdf failed: output pdf not found")
-    return pdf_path
 
 
 def _extract_pdf_lines(pdf_path: Path) -> List[Dict[str, Any]]:
@@ -150,24 +99,17 @@ def run_job(job_id: str) -> None:
     for p in input_files:
         if p.name in ("status.json", "result.json"):
             continue
-        if p.suffix.lower() in (".pdf", ".docx"):
+        if p.suffix.lower() == ".pdf":
             input_path = p
             break
     if input_path is None:
-        _set_status(job_id, "error", 0, "unsupported file type (only .pdf/.docx)")
+        _set_status(job_id, "error", 0, "unsupported file type (only .pdf)")
         return
 
     try:
         _set_status(job_id, "running", 5, "preparing")
-
-        if input_path.suffix.lower() == ".docx":
-            _set_status(job_id, "running", 15, "converting docx to pdf")
-            pdf_path = _convert_docx_to_pdf(input_path, job_path / "converted")
-        else:
-            pdf_path = input_path
-
         _set_status(job_id, "running", 35, "extracting text")
-        lines = _extract_pdf_lines(pdf_path)
+        lines = _extract_pdf_lines(input_path)
 
         _set_status(job_id, "running", 55, "loading dictionaries")
         reload_resources()

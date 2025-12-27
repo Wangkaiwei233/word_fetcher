@@ -1,10 +1,9 @@
 # Word Fetcher
 
-一个基于 Web 的中文文档名词提取与分析工具。支持上传 Word (`.docx`) 或 PDF 文件，自动提取文档中的所有中文名词并统计词频，提供详细的位置信息（页码、行号）和上下文句子展示。
+一个基于 Web 的中文文档名词提取与分析工具。支持上传 PDF 文件，自动提取文档中的所有中文名词并统计词频，提供详细的位置信息（页码、行号）和上下文句子展示。
 
 ## 功能特性
 
-- **多格式支持**：支持 `.docx` 和 PDF 文件上传处理
 - **名词提取**：基于 jieba 分词，提取所有中文名词（包括普通名词和专有名词）
 - **词频统计**：自动统计每个名词的出现频次，支持排序和筛选
 - **位置定位**：精确定位每个名词出现的页码和行号
@@ -14,7 +13,6 @@
 
 ## 技术说明
 
-- **Word 文档处理**：`.docx` 文件会先通过 LibreOffice 转换为 PDF 再进行文本提取，页码和行号以转换后的 PDF 为准
 - **PDF 要求**：仅支持含有文字层的 PDF 文档，不支持扫描件 OCR
 - **名词定义**：采用 jieba.posseg 词性标注，包含所有以 `n` 开头的词性标签（`n/nr/ns/nt/nz` 等），涵盖普通名词和专有名词（人名、地名、机构名等）
 
@@ -24,44 +22,10 @@
 - **前端**：原生 HTML/CSS/JavaScript（由后端托管）
 - **PDF 处理**：PyMuPDF (fitz)
 - **中文分词**：jieba + jieba.posseg
-- **Word 转换**：LibreOffice (headless 模式)
 
 ## 环境要求
 
-### 必需软件
-
 - **Python**：3.10 或更高版本（推荐 3.11+）
-- **LibreOffice**：用于 Word 文档转换
-
-### LibreOffice 安装
-
-**macOS**:
-```bash
-brew install --cask libreoffice
-# 验证安装
-soffice --version
-```
-
-**Linux**:
-```bash
-sudo apt-get install libreoffice  # Debian/Ubuntu
-sudo yum install libreoffice      # CentOS/RHEL
-```
-
-**Windows**:
-从 [LibreOffice 官网](https://www.libreoffice.org/download/download/) 下载安装
-
-### 配置 soffice 路径
-
-如果 `soffice` 命令不在系统 PATH 中，可通过环境变量指定：
-
-```bash
-# macOS 默认路径
-export SOFFICE_PATH="/Applications/LibreOffice.app/Contents/MacOS/soffice"
-
-# Linux 默认路径（示例）
-export SOFFICE_PATH="/usr/bin/soffice"
-```
 
 ## 快速开始
 
@@ -96,7 +60,7 @@ python main.py
 
 ### 4. 使用说明
 
-1. 点击上传按钮选择 `.docx` 或 PDF 文件
+1. 点击上传按钮选择 PDF 文件
 2. 等待文件处理完成（进度条显示）
 3. 查看提取的名词列表和词频统计
 4. 点击任意名词查看其在文档中的详细位置和上下文
@@ -136,7 +100,7 @@ POST /api/upload
 Content-Type: multipart/form-data
 
 参数：
-  file: 上传的文件（.docx 或 .pdf）
+  file: 上传的 PDF 文件
 
 响应：
   { "job_id": "uuid-string" }
@@ -257,9 +221,6 @@ word_fetcher/
 
 ## 常见问题
 
-**Q: 为什么 Word 文档的页码和原文件不一致？**
-A: 本项目通过 LibreOffice 将 `.docx` 转换为 PDF 后再处理。转换后的 PDF 页码可能与原 Word 文档不完全一致，这取决于文档的排版和格式。
-
 **Q: 支持扫描版 PDF 吗？**
 A: 不支持。本项目仅处理含有文字层的 PDF，不包含 OCR 功能。
 
@@ -295,5 +256,4 @@ A: 处理时间取决于文档大小和复杂度。通常几百页的文档在�
 - [jieba](https://github.com/fxsjy/jieba) - 中文分词库
 - [PyMuPDF](https://github.com/pymupdf/PyMuPDF) - PDF 处理库
 - [FastAPI](https://fastapi.tiangolo.com/) - 现代 Web 框架
-- [LibreOffice](https://www.libreoffice.org/) - 文档转换工具
 

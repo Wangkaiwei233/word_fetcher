@@ -379,7 +379,7 @@ async function uploadFile() {
   const fileInput = $("file");
   const f = fileInput.files?.[0];
   if (!f) {
-    alert("请先选择一个 .pdf 或 .docx 文件");
+    alert("请先选择一个 .pdf 文件");
     return;
   }
 
@@ -535,7 +535,7 @@ function wire() {
     } else {
       uploadText.textContent = "选择或拖拽文件";
       uploadText.style.color = "";
-      uploadHint.textContent = "支持 .pdf, .docx 格式";
+      uploadHint.textContent = "支持 .pdf 格式";
       uploadArea.style.borderColor = "";
       uploadArea.style.background = "";
     }
