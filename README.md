@@ -251,9 +251,3 @@ A: 处理时间取决于文档大小和复杂度。通常几百页的文档在�
 - 提交 [Issue](https://github.com/your-username/word_fetcher/issues)
 - Pull Request
 
-## 致谢
-
-- [jieba](https://github.com/fxsjy/jieba) - 中文分词库
-- [PyMuPDF](https://github.com/pymupdf/PyMuPDF) - PDF 处理库
-- [FastAPI](https://fastapi.tiangolo.com/) - 现代 Web 框架
-
